@@ -14,6 +14,7 @@ namespace bp = boost::python;
 #include "boost/algorithm/string.hpp"
 #include "caffe/caffe.hpp"
 #include "caffe/util/signal_handler.h"
+#include "multiverso/multiverso.h"
 
 using caffe::Blob;
 using caffe::Caffe;
