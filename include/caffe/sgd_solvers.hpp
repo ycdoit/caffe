@@ -169,12 +169,14 @@ protected:
     boost::shared_ptr<multiverso::ArrayServer<Dtype>> server_table;
     boost::shared_ptr<multiverso::ASyncBuffer<boost::shared_ptr<Blob<Dtype>>>> async_buffer;
     int GetParamSize();
-    void SubmitModelToServer(boost::shared_ptr<Blob<Dtype>> model);
+    void SubmitModelToServer(boost::shared_ptr<Blob<Dtype>> buffer);
+    void SubmitModelToServer(Dtype* model, int size);
     void CopyModelToBuffer(boost::shared_ptr<Blob<Dtype>> buffer);
     void CopyBufferToModel(boost::shared_ptr<Blob<Dtype>> buffer);
     void OnIterStart();
-    void GetModelFromServer(Dtype* model, size_t size);
-    void SubmitDiffToServer(Dtype* model, size_t size);
+    void GetModelFromServer(Dtype* model, int size);
+    void SubmitDiffToServer(Dtype* model, int size);
+    void BroadCastData();
 
     class ASGDCallback : public Solver<Dtype>::Callback {
       public:
@@ -188,6 +190,8 @@ protected:
     template <typename T>
     friend class ASGDSolver;
     DISABLE_COPY_AND_ASSIGN(ASGDSolver);
+private:
+    int size_;
 };
 
 }  // namespace caffe

@@ -17,6 +17,7 @@ void ASGDSolver<Dtype>::ASGDPreSolve() {
     callback->SetSolver(this);
     this->add_callback(callback);
     auto param_size = GetParamSize();
+    size_ = param_size;
     params_1.reset(new Blob<Dtype>({ param_size, 1, 1, 1 }));
     params_2.reset(new Blob<Dtype>({ param_size, 1, 1, 1 }));
     worker_table.reset(new multiverso::ArrayWorker<Dtype>(param_size));
@@ -45,7 +46,7 @@ int ASGDSolver<Dtype>::GetParamSize() {
         ++param_id) {
         size += this->net_->learnable_params()[param_id]->count();
     }
-    return 0;
+    return size;
 }
 
 
@@ -62,33 +63,112 @@ void ASGDSolver<Dtype>::Snapshot() {
 }
 
 template <typename Dtype>
-void ASGDSolver<Dtype>::SubmitModelToServer(boost::shared_ptr<Blob<Dtype>> model) {
+void ASGDSolver<Dtype>::SubmitModelToServer(boost::shared_ptr<Blob<Dtype>> buffer) {
+    multiverso::MV_Barrier();
+    if (multiverso::MV_Rank() == 0)
+    {
+        SubmitModelToServer(buffer->mutable_cpu_data(), size_);//send the initial params to server
+    }
+    multiverso::MV_Barrier();
+}
 
+template <typename Dtype>
+void ASGDSolver<Dtype>::SubmitModelToServer(Dtype* model, int size) {
+    boost::shared_ptr<Dtype> current_model(new Dtype[size], [](Dtype *p) { delete[] p; });
+    // clear model
+    worker_table->Get(current_model.get(), size);
+    multiverso::AddOption option;
+    option.set_momentum(0);
+    worker_table->Add(current_model.get(), size, &option);
+    for (int i = 0; i < size; i++)
+    {
+        current_model.get()[i] = 0.0f;
+    }
+    // clear momentum
+    worker_table->Add(current_model.get(), size, &option);
+
+    // replace with new model
+    for (auto i = 0; i < size; ++i)       model[i] = -1 * model[i];
+    worker_table->Add(model, size, &option);
+
+    for (int i = 0; i < size; i++)
+    {
+        current_model.get()[i] = 0.0f;
+    }
+    // clear momentum
+    worker_table->Add(current_model.get(), size, &option);
 }
 
 template <typename Dtype>
 void ASGDSolver<Dtype>::CopyModelToBuffer(boost::shared_ptr<Blob<Dtype>> buffer) {
+    int count = 0;
 
+    // TODO(junli): fix this.
+   /* switch (Caffe::mode()) {
+    case Caffe::CPU:
+        blob_mem_ptr = (data_or_diff == DATA ? blob->cpu_data() : blob->cpu_diff());
+        break;
+    case Caffe::GPU:
+        blob_mem_ptr = (data_or_diff == DATA ? blob->gpu_data() : blob->gpu_diff());
+        break;
+    default:
+        mxERROR("Unknown Caffe mode");
+    }
+    caffe_copy(blob->count(), blob_mem_ptr, mat_mem_ptr);*/
+
+    for (int param_id = 0; param_id < this->net_->learnable_params().size(); ++param_id) {
+        auto weight = this->net_->learnable_params()[param_id];
+        caffe_copy(weight->count(), weight->gpu_data(), buffer->mutable_gpu_data() + count);
+        count += weight->count();
+    }
 }
 
 template <typename Dtype>
 void ASGDSolver<Dtype>::CopyBufferToModel(boost::shared_ptr<Blob<Dtype>> buffer) {
+    int count = 0;
+
+    // TODO(junli): fix this.
+  /*  switch (Caffe::mode()) {
+    case Caffe::CPU:
+        blob_mem_ptr = (data_or_diff == DATA ? blob->cpu_data() : blob->cpu_diff());
+        break;
+    case Caffe::GPU:
+        blob_mem_ptr = (data_or_diff == DATA ? blob->gpu_data() : blob->gpu_diff());
+        break;
+    default:
+        mxERROR("Unknown Caffe mode");
+    }
+    caffe_copy(blob->count(), blob_mem_ptr, mat_mem_ptr);
+*/
+
+    for (int param_id = 0; param_id < this->net_->learnable_params().size(); ++param_id) {
+        auto weight = this->net_->learnable_params()[param_id];
+        caffe_copy(weight->count(), buffer->gpu_data() + count, weight->mutable_gpu_data());
+        count += weight->count();
+    }
 }
 
 template <typename Dtype>
 void ASGDSolver<Dtype>::OnIterStart() {
+    params_train = (*async_buffer->Get());
+    CopyBufferToModel(params_train);
+    BroadCastData();
+}
+
+// TODO(junli): Should support multiple Gpus per node
+template <typename Dtype>
+void ASGDSolver<Dtype>::BroadCastData() {
 }
 
 template <typename Dtype>
-void ASGDSolver<Dtype>::GetModelFromServer(Dtype* model, size_t size) {
-    vector<long long> rows;
+void ASGDSolver<Dtype>::GetModelFromServer(Dtype* model, int size) {
     worker_table->Get(model, size);
 }
 
 template <typename Dtype>
-void ASGDSolver<Dtype>::SubmitDiffToServer(Dtype* model, size_t size) {
+void ASGDSolver<Dtype>::SubmitDiffToServer(Dtype* model, int size) {
     multiverso::AddOption option;
-    option.set_momentum(0.9f);
+    option.set_momentum(0.9f);                   // TODO(junli): Use parameter from proto file
     worker_table->Add(model, size, &option);
 }
 
