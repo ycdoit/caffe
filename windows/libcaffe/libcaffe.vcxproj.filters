@@ -336,7 +336,9 @@
     <ClCompile Include="..\..\src\caffe\util\signal_handler.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\caffe\solvers\asgd_solver.cpp" />
+    <ClCompile Include="..\..\src\caffe\solvers\asgd_solver.cpp">
+      <Filter>src\solvers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\caffe\proto\caffe.pb.h">

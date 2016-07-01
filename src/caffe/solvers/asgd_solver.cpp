@@ -9,13 +9,17 @@
 namespace caffe {
 
 template <typename Dtype>
-void AsgdSolver<Dtype>::AsgdPreSolve() {
+void ASGDSolver<Dtype>::ASGDPreSolve() {
 
 }
+
 
 template <typename Dtype>
-void AsgdSolver<Dtype>::ApplyUpdate() {
+void ASGDSolver<Dtype>::ApplyUpdate() {
 
 }
+
+INSTANTIATE_CLASS(ASGDSolver);
+REGISTER_SOLVER_CLASS(ASGD);
 
 };

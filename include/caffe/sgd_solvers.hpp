@@ -144,19 +144,19 @@ class AdamSolver : public SGDSolver<Dtype> {
 };
 
 template <typename Dtype>
-class AsgdSolver : public SGDSolver<Dtype> {
+class ASGDSolver : public SGDSolver<Dtype> {
 public:
-    explicit AsgdSolver(const SolverParameter& param)
-        : SGDSolver<Dtype>(param) { AsgdPreSolve(); }
-    explicit AsgdSolver(const string& param_file)
-        : SGDSolver<Dtype>(param_file) { AsgdPreSolve(); }
+    explicit ASGDSolver(const SolverParameter& param)
+        : SGDSolver<Dtype>(param) { ASGDPreSolve(); }
+    explicit ASGDSolver(const string& param_file)
+        : SGDSolver<Dtype>(param_file) { ASGDPreSolve(); }
     virtual inline const char* type() const { return "ASGD"; }
 
 protected:
-    void AsgdPreSolve();
+    void ASGDPreSolve();
     virtual void ApplyUpdate();
 
-    DISABLE_COPY_AND_ASSIGN(AsgdSolver);
+    DISABLE_COPY_AND_ASSIGN(ASGDSolver);
 };
 
 }  // namespace caffe
