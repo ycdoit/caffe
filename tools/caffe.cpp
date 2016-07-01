@@ -252,10 +252,16 @@ int asgd_train() {
                 boost::lexical_cast<string>(solver_param.device_id());
         }
         else {  // Set default GPU if unspecified
-            FLAGS_gpu = "" + boost::lexical_cast<string>(0);
+            FLAGS_gpu = "" + boost::lexical_cast<string>(mpi_rank);              // TODO(junli): fix this.
         }
     }
 
+    /*  TODO(junli): need to support multiple gpus per node.
+        In the feature: we should have an additional parameter: GpusPerProcess
+            Our algorithm should assign different GPUs to processes according to shis parameter.
+        Currently for experiments: 
+            1. Only one GPU per process
+    */
     vector<int> gpus;
     get_gpus(&gpus);
     if (gpus.size() == 0) {
