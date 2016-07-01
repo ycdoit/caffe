@@ -170,13 +170,17 @@ protected:
     boost::shared_ptr<multiverso::ASyncBuffer<boost::shared_ptr<Blob<Dtype>>>> async_buffer;
     int GetParamSize();
     void SubmitModelToServer(boost::shared_ptr<Blob<Dtype>> model);
-    void OnStart();
+    void CopyModelToBuffer(boost::shared_ptr<Blob<Dtype>> buffer);
+    void CopyBufferToModel(boost::shared_ptr<Blob<Dtype>> buffer);
+    void OnIterStart();
+    void GetModelFromServer(Dtype* model, size_t size);
+    void SubmitDiffToServer(Dtype* model, size_t size);
 
     class ASGDCallback : public Solver<Dtype>::Callback {
       public:
         ASGDCallback() { }
         void SetSolver(ASGDSolver<Dtype>* asgdSolver) { asgdSolver_ = asgdSolver; }
-        virtual void on_start() override{ asgdSolver_->OnStart();}
+        virtual void on_start() override{ asgdSolver_->OnIterStart(); }
         virtual void on_gradients_ready() override {    }
       protected:
         ASGDSolver<Dtype>* asgdSolver_;

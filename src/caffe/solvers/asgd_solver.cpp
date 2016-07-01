@@ -5,7 +5,9 @@
 #include "caffe/util/hdf5.hpp"
 #include "caffe/util/io.hpp"
 #include "caffe/util/upgrade_proto.hpp"
-#include "multiverso/multiverso.h"
+#include <multiverso/multiverso.h>
+#include <multiverso/updater/updater.h>
+#include <multiverso/updater/momentum_updater.h>
 
 namespace caffe {
 
@@ -22,10 +24,9 @@ void ASGDSolver<Dtype>::ASGDPreSolve() {
     multiverso::MV_Barrier();
 
     params_train = params_1;
-    // TODO(junli): init server buffer.
     // init the pipeline buffer
-    //copy_model_to_buffer(params_train);
-    //SubmitModelToServer(params_train);
+    CopyModelToBuffer(params_train);
+    SubmitModelToServer(params_train);
 
     const auto worker = this->worker_table;
     const auto size = param_size;
@@ -58,6 +59,37 @@ void ASGDSolver<Dtype>::Snapshot() {
   if (multiverso::MV_Rank() == 0) {
     Solver<Dtype>::Snapshot();
   }
+}
+
+template <typename Dtype>
+void ASGDSolver<Dtype>::SubmitModelToServer(boost::shared_ptr<Blob<Dtype>> model) {
+
+}
+
+template <typename Dtype>
+void ASGDSolver<Dtype>::CopyModelToBuffer(boost::shared_ptr<Blob<Dtype>> buffer) {
+
+}
+
+template <typename Dtype>
+void ASGDSolver<Dtype>::CopyBufferToModel(boost::shared_ptr<Blob<Dtype>> buffer) {
+}
+
+template <typename Dtype>
+void ASGDSolver<Dtype>::OnIterStart() {
+}
+
+template <typename Dtype>
+void ASGDSolver<Dtype>::GetModelFromServer(Dtype* model, size_t size) {
+    vector<long long> rows;
+    worker_table->Get(model, size);
+}
+
+template <typename Dtype>
+void ASGDSolver<Dtype>::SubmitDiffToServer(Dtype* model, size_t size) {
+    multiverso::AddOption option;
+    option.set_momentum(0.9f);
+    worker_table->Add(model, size, &option);
 }
 
 INSTANTIATE_CLASS(ASGDSolver);
