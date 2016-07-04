@@ -49,9 +49,24 @@ int ASGDSolver<Dtype>::GetParamSize() {
     return size;
 }
 
-
 template <typename Dtype>
 void ASGDSolver<Dtype>::ApplyUpdate() {
+    CHECK(Caffe::root_solver());
+    Dtype rate = GetLearningRate();
+    if (this->param_.display() && this->iter_ % this->param_.display() == 0) {
+        LOG(INFO) << "Iteration " << this->iter_ << ", lr = " << rate;
+    }
+    ClipGradients();
+    for (int param_id = 0; param_id < this->net_->learnable_params().size();
+        ++param_id) {
+        Normalize(param_id);
+        Regularize(param_id);
+        ComputeUpdateValue(param_id, rate);
+    }
+
+    // Copy diff to param_train, Submit diff to server
+    CopyDiffToBuffer(params_train);
+    SubmitModelToServer(params_train);
 
 }
 
@@ -102,23 +117,47 @@ void ASGDSolver<Dtype>::SubmitModelToServer(Dtype* model, int size) {
 template <typename Dtype>
 void ASGDSolver<Dtype>::CopyModelToBuffer(boost::shared_ptr<Blob<Dtype>> buffer) {
     int count = 0;
-
-    // TODO(junli): fix this.
-   /* switch (Caffe::mode()) {
-    case Caffe::CPU:
-        blob_mem_ptr = (data_or_diff == DATA ? blob->cpu_data() : blob->cpu_diff());
-        break;
-    case Caffe::GPU:
-        blob_mem_ptr = (data_or_diff == DATA ? blob->gpu_data() : blob->gpu_diff());
-        break;
-    default:
-        mxERROR("Unknown Caffe mode");
-    }
-    caffe_copy(blob->count(), blob_mem_ptr, mat_mem_ptr);*/
-
     for (int param_id = 0; param_id < this->net_->learnable_params().size(); ++param_id) {
         auto weight = this->net_->learnable_params()[param_id];
-        caffe_copy(weight->count(), weight->gpu_data(), buffer->mutable_gpu_data() + count);
+        const Dtype* src = nullptr;
+        Dtype* dst = nullptr;
+        switch (Caffe::mode()) {
+        case Caffe::CPU:
+            src = weight->cpu_data();
+            dst = buffer->mutable_cpu_data() + count;
+            break;
+        case Caffe::GPU:
+            src = weight->gpu_data();
+            dst = buffer->mutable_gpu_data() + count;
+            break;
+        default:
+            LOG(ERROR) << "Unknown Caffe mode";
+        }
+        caffe_copy(weight->count(), src, dst);
+        count += weight->count();
+    }
+}
+
+template <typename Dtype>
+void ASGDSolver<Dtype>::CopyDiffToBuffer(boost::shared_ptr<Blob<Dtype>> buffer) {
+    int count = 0;
+    for (int param_id = 0; param_id < this->net_->learnable_params().size(); ++param_id) {
+        auto weight = this->net_->learnable_params()[param_id];
+        const Dtype* src = nullptr;
+        Dtype* dst = nullptr;
+        switch (Caffe::mode()) {
+        case Caffe::CPU:
+            src = weight->cpu_diff();
+            dst = buffer->mutable_cpu_diff() + count;
+            break;
+        case Caffe::GPU:
+            src = weight->gpu_diff();
+            dst = buffer->mutable_gpu_diff() + count;
+            break;
+        default:
+            LOG(ERROR) << "Unknown Caffe mode";
+        }
+        caffe_copy(weight->count(), src, dst);
         count += weight->count();
     }
 }
@@ -126,24 +165,23 @@ void ASGDSolver<Dtype>::CopyModelToBuffer(boost::shared_ptr<Blob<Dtype>> buffer)
 template <typename Dtype>
 void ASGDSolver<Dtype>::CopyBufferToModel(boost::shared_ptr<Blob<Dtype>> buffer) {
     int count = 0;
-
-    // TODO(junli): fix this.
-  /*  switch (Caffe::mode()) {
-    case Caffe::CPU:
-        blob_mem_ptr = (data_or_diff == DATA ? blob->cpu_data() : blob->cpu_diff());
-        break;
-    case Caffe::GPU:
-        blob_mem_ptr = (data_or_diff == DATA ? blob->gpu_data() : blob->gpu_diff());
-        break;
-    default:
-        mxERROR("Unknown Caffe mode");
-    }
-    caffe_copy(blob->count(), blob_mem_ptr, mat_mem_ptr);
-*/
-
     for (int param_id = 0; param_id < this->net_->learnable_params().size(); ++param_id) {
         auto weight = this->net_->learnable_params()[param_id];
-        caffe_copy(weight->count(), buffer->gpu_data() + count, weight->mutable_gpu_data());
+        const Dtype* src = nullptr;
+        Dtype* dst = nullptr;
+        switch (Caffe::mode()) {
+        case Caffe::CPU:
+            src = buffer->cpu_data() + count;
+            dst = weight->mutable_cpu_data();
+            break;
+        case Caffe::GPU:
+            src = buffer->gpu_data() + count;
+            dst = weight->mutable_gpu_data();
+            break;
+        default:
+            LOG(ERROR) << "Unknown Caffe mode";
+        }
+        caffe_copy(weight->count(), src, dst);
         count += weight->count();
     }
 }
@@ -155,9 +193,9 @@ void ASGDSolver<Dtype>::OnIterStart() {
     BroadCastData();
 }
 
-// TODO(junli): Should support multiple Gpus per node
 template <typename Dtype>
 void ASGDSolver<Dtype>::BroadCastData() {
+    // Note(junli): multiple gpu broadcast is automatically supported by caffe::P2PSync
 }
 
 template <typename Dtype>
@@ -174,5 +212,4 @@ void ASGDSolver<Dtype>::SubmitDiffToServer(Dtype* model, int size) {
 
 INSTANTIATE_CLASS(ASGDSolver);
 REGISTER_SOLVER_CLASS(ASGD);
-
 };

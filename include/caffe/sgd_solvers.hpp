@@ -173,6 +173,7 @@ protected:
     void SubmitModelToServer(Dtype* model, int size);
     void CopyModelToBuffer(boost::shared_ptr<Blob<Dtype>> buffer);
     void CopyBufferToModel(boost::shared_ptr<Blob<Dtype>> buffer);
+    void CopyDiffToBuffer(boost::shared_ptr<Blob<Dtype>> buffer);
     void OnIterStart();
     void GetModelFromServer(Dtype* model, int size);
     void SubmitDiffToServer(Dtype* model, int size);
