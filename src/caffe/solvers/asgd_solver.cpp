@@ -35,7 +35,9 @@ void ASGDSolver<Dtype>::ASGDPreSolve() {
         &params_2,
         [worker, size](boost::shared_ptr<Blob<Dtype>>* buffer) -> void{
         worker->Get((*buffer)->mutable_cpu_data(), size);
-        (*buffer)->gpu_data();
+        if (Caffe::mode() == Caffe::GPU) {
+            (*buffer)->gpu_data();
+        }
     }));
 }
 

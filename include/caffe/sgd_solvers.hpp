@@ -156,7 +156,7 @@ public:
     explicit ASGDSolver(const string& param_file)
         : SGDSolver<Dtype>(param_file) { ASGDPreSolve(); }
     virtual inline const char* type() const { return "ASGD"; }
-    virtual void Solve(const char* resume_file = NULL) override;
+    //virtual void Solve(const char* resume_file = NULL) override;
     virtual void Snapshot() override;
 
 

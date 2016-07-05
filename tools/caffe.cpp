@@ -232,7 +232,7 @@ int asgd_train() {
     //==============================================================
     LOG(INFO) << "Initiaizing Multiverso";
     multiverso::SetCMDFlag("updater_type", string("momentum_sgd"));
-    multiverso::MV_Init(&__argc, __argv);//init parallel framework
+    multiverso::MV_Init(0, nullptr);//init parallel framework
     auto mpi_rank = multiverso::MV_Rank();
     //==============================================================
     CHECK_GT(FLAGS_solver.size(), 0) << "Need a solver definition to train.";
@@ -242,6 +242,7 @@ int asgd_train() {
 
     caffe::SolverParameter solver_param;
     caffe::ReadSolverParamsFromTextFileOrDie(FLAGS_solver, &solver_param);
+    solver_param.set_type("ASGD");
 
     // If the gpus flag is not provided, allow the mode and device to be set
     // in the solver prototxt.
