@@ -12,6 +12,7 @@ namespace bp = boost::python;
 #include <vector>
 
 #include "boost/algorithm/string.hpp"
+#include "boost/interprocess/sync/named_mutex.hpp"
 #include "caffe/caffe.hpp"
 #include "caffe/util/signal_handler.h"
 #include "multiverso/multiverso.h"
@@ -49,6 +50,8 @@ DEFINE_string(sigint_effect, "stop",
 DEFINE_string(sighup_effect, "snapshot",
              "Optional; action to take when a SIGHUP signal is received: "
              "snapshot, stop or none.");
+DEFINE_int32(gpus_per_process, 1,
+    "The number of GPUs assigned to each process.");
 
 // A simple registry for caffe commands.
 typedef int (*BrewFunction)();
@@ -226,6 +229,18 @@ int train() {
   return 0;
 }
 RegisterBrewFunction(train);
+
+
+/*
+    Note(junli): Assign GPUs to processes on a same machine in GPU mode
+        1. Get all available GPUs: CUDA_CHECK(::cudaGetDeviceCount(&iDeviceNum_));
+        2. Get GpuNeeded from main() function's input parameters
+        3. Use process mutual exclusively allocate GPUs to each process. 
+        Boost for windows and Linux?       Boost.Interprocess
+        Boost.Interprocess Mutex
+        http://www.boost.org/doc/libs/1_57_0/doc/html/interprocess/synchronization_mechanisms.html
+        http://www.boost.org/doc/libs/1_57_0/doc/html/boost/interprocess/named_mutex.html
+*/
 
 // Train / Finetune a model.
 int asgd_train() {

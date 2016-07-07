@@ -339,6 +339,9 @@
     <ClCompile Include="..\..\src\caffe\solvers\asgd_solver.cpp">
       <Filter>src\solvers</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\caffe\util\gpu_allocator.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\caffe\proto\caffe.pb.h">
@@ -640,6 +643,9 @@
     </ClInclude>
     <ClInclude Include="..\..\include\caffe\layers\scale_layer.hpp">
       <Filter>include\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\caffe\util\gpu_allocator.hpp">
+      <Filter>include\util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

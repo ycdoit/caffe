@@ -159,8 +159,6 @@ public:
     //virtual void Solve(const char* resume_file = NULL) override;
     virtual void Snapshot() override;
 
-
-
 protected:
     void ASGDPreSolve();
     virtual void ApplyUpdate();
