@@ -101,3 +101,6 @@ MANIFEST-*
 *.opensdf
 *.pdb
 *.props
+windows/.visuallint/
+windows/caffe/gpu_allocator.lock
+windows/caffe/gpu_allocation.content
