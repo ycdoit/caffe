@@ -104,3 +104,8 @@ MANIFEST-*
 windows/.visuallint/
 windows/caffe/gpu_allocator.lock
 windows/caffe/gpu_allocation.content
+asgd.1p.log.txt
+asgd.2p.log.txt
+gpu_allocation.content
+gpu_allocator.lock
+sgd.1p.log.txt

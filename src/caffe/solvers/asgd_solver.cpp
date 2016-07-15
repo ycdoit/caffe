@@ -12,33 +12,45 @@
 namespace caffe {
 
 template <typename Dtype>
+void ASGDSolver<Dtype>::DebugModel(string str, const Blob<Dtype>& blob) {
+  LOG(INFO) << str << " data[0]:" << blob.cpu_data()[0]
+    << ",diff[0]:" << blob.cpu_diff()[0];
+}
+
+template <typename Dtype>
 void ASGDSolver<Dtype>::ASGDPreSolve() {
-    auto callback = new ASGDCallback();
-    callback->SetSolver(this);
-    this->add_callback(callback);
-    auto param_size = GetParamSize();
-    size_ = param_size;
-    params_1.reset(new Blob<Dtype>({ param_size, 1, 1, 1 }));
-    params_2.reset(new Blob<Dtype>({ param_size, 1, 1, 1 }));
-    worker_table.reset(new multiverso::ArrayWorker<Dtype>(param_size));
-    server_table.reset(new multiverso::ArrayServer<Dtype>(param_size));
-    multiverso::MV_Barrier();
+  use_pipeline_ = false;
+  LOG(INFO) << "Use Pipeline:" << use_pipeline_;
+  auto callback = new ASGDCallback();
+  callback->SetSolver(this);
+  this->add_callback(callback);
+  auto param_size = GetParamSize();
+  size_ = param_size;
+  params_1.reset(new Blob<Dtype>({ param_size, 1, 1, 1 }));
+  params_2.reset(new Blob<Dtype>({ param_size, 1, 1, 1 }));
+  worker_table.reset(new multiverso::ArrayWorker<Dtype>(param_size));
+  server_table.reset(new multiverso::ArrayServer<Dtype>(param_size));
+  multiverso::MV_Barrier();
 
-    params_train = params_1;
-    // init the pipeline buffer
-    CopyModelToBuffer(params_train);
-    SubmitModelToServer(params_train);
+  params_train = params_1;
+  // init the pipeline buffer
+  DebugModel("Before CopyModelToBuffer", *params_train);
+  CopyModelToBuffer(params_train);
+  DebugModel("After CopyModelToBuffer", *params_train);
+  SubmitModelToServer(params_train);
 
-    const auto worker = this->worker_table;
-    const auto size = param_size;
+  const auto worker = this->worker_table;
+  const auto size = param_size;
+  if (use_pipeline_) {
     async_buffer = boost::shared_ptr<multiverso::ASyncBuffer<boost::shared_ptr<Blob<Dtype>>>>(new multiverso::ASyncBuffer<boost::shared_ptr<Blob<Dtype>>>(&params_1,
-        &params_2,
-        [worker, size](boost::shared_ptr<Blob<Dtype>>* buffer) -> void{
-        worker->Get((*buffer)->mutable_cpu_data(), size);
-        if (Caffe::mode() == Caffe::GPU) {
-            (*buffer)->gpu_data();
-        }
+      &params_2,
+      [worker, size](boost::shared_ptr<Blob<Dtype>>* buffer) -> void{
+      worker->Get((*buffer)->mutable_cpu_data(), size);
+      if (Caffe::mode() == Caffe::GPU) {
+        (*buffer)->gpu_data();
+      }
     }));
+  }
 }
 
 template <typename Dtype>
@@ -67,9 +79,11 @@ void ASGDSolver<Dtype>::ApplyUpdate() {
     }
 
     // Copy diff to param_train, Submit diff to server
+    DebugModel("Before CopyDiffToBuffer", *params_train);
     CopyDiffToBuffer(params_train);
-    SubmitModelToServer(params_train);
-
+    DebugModel("After CopyDiffToBuffer", *params_train);
+    SubmitDiffToServer(params_train->mutable_cpu_diff(), size_);
+    // SubmitModelToServer(params_train);
 }
 
 template <typename Dtype>
@@ -84,13 +98,13 @@ void ASGDSolver<Dtype>::SubmitModelToServer(boost::shared_ptr<Blob<Dtype>> buffe
     multiverso::MV_Barrier();
     if (multiverso::MV_Rank() == 0)
     {
-        SubmitModelToServer(buffer->mutable_cpu_data(), size_);//send the initial params to server
+        SubmitModelToServer(buffer->cpu_data(), size_);//send the initial params to server
     }
     multiverso::MV_Barrier();
 }
 
 template <typename Dtype>
-void ASGDSolver<Dtype>::SubmitModelToServer(Dtype* model, int size) {
+void ASGDSolver<Dtype>::SubmitModelToServer(const Dtype* model, int size) {
     boost::shared_ptr<Dtype> current_model(new Dtype[size], [](Dtype *p) { delete[] p; });
     // clear model
     worker_table->Get(current_model.get(), size);
@@ -105,8 +119,8 @@ void ASGDSolver<Dtype>::SubmitModelToServer(Dtype* model, int size) {
     worker_table->Add(current_model.get(), size, &option);
 
     // replace with new model
-    for (auto i = 0; i < size; ++i)       model[i] = -1 * model[i];
-    worker_table->Add(model, size, &option);
+    for (auto i = 0; i < size; ++i)       current_model.get()[i] = -1 * model[i];
+    worker_table->Add(current_model.get(), size, &option);
 
     for (int i = 0; i < size; i++)
     {
@@ -114,6 +128,10 @@ void ASGDSolver<Dtype>::SubmitModelToServer(Dtype* model, int size) {
     }
     // clear momentum
     worker_table->Add(current_model.get(), size, &option);
+
+
+    worker_table->Get(current_model.get(), size_);
+    CHECK(fabs(model[0] - current_model.get()[0]) <= 1e-10);
 }
 
 template <typename Dtype>
@@ -190,9 +208,19 @@ void ASGDSolver<Dtype>::CopyBufferToModel(boost::shared_ptr<Blob<Dtype>> buffer)
 
 template <typename Dtype>
 void ASGDSolver<Dtype>::OnIterStart() {
+  if (use_pipeline_) {
     params_train = (*async_buffer->Get());
-    CopyBufferToModel(params_train);
-    BroadCastData();
+  } else {
+    worker_table->Get(params_train->mutable_cpu_data(), size_);
+  }
+  DebugModel("Before CopyBufferToModel", *params_train);
+  CopyBufferToModel(params_train);
+  
+  // DEBUG(junli): remove this
+  CopyModelToBuffer(params_train);
+  DebugModel("After CopyBufferToModel", *params_train);
+
+  BroadCastData();
 }
 
 template <typename Dtype>

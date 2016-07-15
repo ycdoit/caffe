@@ -72,6 +72,7 @@ void GpuAllocator::AppendLine(string file_path, const string line) {
 // class that has process lifetime. This means that if a process holding a file
 // lock ends or crashes, the operating system will automatically unlock it.
 bool GpuAllocator::GetGpus(vector<int>* gpus, int count) {
+  TouchGPULockFile(lock_file_name);
   TouchGPULockFile(gpu_allocation_file_name);
   auto hostName = GetHostName();
 
@@ -80,6 +81,7 @@ bool GpuAllocator::GetGpus(vector<int>* gpus, int count) {
   string name_start = hostName + ":gpu-";
   int device_count = 0;
   CUDA_CHECK(cudaGetDeviceCount(&device_count));
+  LOG(INFO) << "Got " << device_count << " GPUs on " << hostName;
   boost::interprocess::file_lock flock(lock_file_name);
   {
     boost::lock_guard<boost::interprocess::file_lock> guard(flock);

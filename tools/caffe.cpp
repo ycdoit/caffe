@@ -15,8 +15,10 @@ namespace bp = boost::python;
 #include "boost/interprocess/sync/named_mutex.hpp"
 #include "caffe/caffe.hpp"
 #include "caffe/util/signal_handler.h"
+#include "caffe/util/gpu_allocator.hpp"
 #include "multiverso/multiverso.h"
 #include "multiverso/util/configure.h"
+
 
 using caffe::Blob;
 using caffe::Caffe;
@@ -27,7 +29,9 @@ using caffe::shared_ptr;
 using caffe::string;
 using caffe::Timer;
 using caffe::vector;
+using caffe::GpuAllocator;
 using std::ostringstream;
+
 
 DEFINE_string(gpu, "",
     "Optional; run in GPU mode on given device IDs separated by ','."
@@ -230,23 +234,10 @@ int train() {
 }
 RegisterBrewFunction(train);
 
-
-/*
-    Note(junli): Assign GPUs to processes on a same machine in GPU mode
-        1. Get all available GPUs: CUDA_CHECK(::cudaGetDeviceCount(&iDeviceNum_));
-        2. Get GpuNeeded from main() function's input parameters
-        3. Use process mutual exclusively allocate GPUs to each process. 
-        Boost for windows and Linux?       Boost.Interprocess
-        Boost.Interprocess Mutex
-        http://www.boost.org/doc/libs/1_57_0/doc/html/interprocess/synchronization_mechanisms.html
-        http://www.boost.org/doc/libs/1_57_0/doc/html/boost/interprocess/named_mutex.html
-*/
-
-// Train / Finetune a model.
 int asgd_train() {
     //==============================================================
     LOG(INFO) << "Initiaizing Multiverso";
-    multiverso::SetCMDFlag("updater_type", string("momentum_sgd"));
+    multiverso::SetCMDFlag("updater_type", string("sgd"));
     multiverso::MV_Init(0, nullptr);//init parallel framework
     auto mpi_rank = multiverso::MV_Rank();
     //==============================================================
@@ -259,27 +250,12 @@ int asgd_train() {
     caffe::ReadSolverParamsFromTextFileOrDie(FLAGS_solver, &solver_param);
     solver_param.set_type("ASGD");
 
-    // If the gpus flag is not provided, allow the mode and device to be set
-    // in the solver prototxt.
-    if (FLAGS_gpu.size() == 0
-        && solver_param.solver_mode() == caffe::SolverParameter_SolverMode_GPU) {
-        if (solver_param.has_device_id()) {
-            FLAGS_gpu = "" +
-                boost::lexical_cast<string>(solver_param.device_id());
-        }
-        else {  // Set default GPU if unspecified
-            FLAGS_gpu = "" + boost::lexical_cast<string>(mpi_rank);              // TODO(junli): fix this.
-        }
-    }
-
-    /*  TODO(junli): need to support multiple gpus per node.
-        In the feature: we should have an additional parameter: GpusPerProcess
-            Our algorithm should assign different GPUs to processes according to shis parameter.
-        Currently for experiments: 
-            1. Only one GPU per process
-    */
+    auto gpus_per_process = FLAGS_gpus_per_process;
+    GpuAllocator gpu_allocator;
     vector<int> gpus;
-    get_gpus(&gpus);
+    CHECK(gpu_allocator.GetGpus(&gpus, gpus_per_process))
+      << "Failed to allocate" << gpus_per_process << " GPUs for process "
+      << multiverso::MV_Rank();
     if (gpus.size() == 0) {
         LOG(INFO) << "Use CPU.";
         Caffe::set_mode(Caffe::CPU);
