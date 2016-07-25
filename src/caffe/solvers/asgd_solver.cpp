@@ -42,7 +42,9 @@ void ASGDSolver<Dtype>::ASGDPreSolve() {
   const auto worker = this->worker_table;
   const auto size = param_size;
   if (use_pipeline_) {
-    async_buffer = boost::shared_ptr<multiverso::ASyncBuffer<boost::shared_ptr<Blob<Dtype>>>>(new multiverso::ASyncBuffer<boost::shared_ptr<Blob<Dtype>>>(&params_1,
+    async_buffer = boost::shared_ptr<
+      multiverso::ASyncBuffer<boost::shared_ptr<Blob<Dtype>>>>(
+      new multiverso::ASyncBuffer<boost::shared_ptr<Blob<Dtype>>>(&params_1,
       &params_2,
       [worker, size](boost::shared_ptr<Blob<Dtype>>* buffer) -> void{
       worker->Get((*buffer)->mutable_cpu_data(), size);
@@ -94,36 +96,37 @@ void ASGDSolver<Dtype>::Snapshot() {
 }
 
 template <typename Dtype>
-void ASGDSolver<Dtype>::SubmitModelToServer(boost::shared_ptr<Blob<Dtype>> buffer) {
+void ASGDSolver<Dtype>::SubmitModelToServer(
+  boost::shared_ptr<Blob<Dtype>> buffer) {
     multiverso::MV_Barrier();
-    if (multiverso::MV_Rank() == 0)
-    {
-        SubmitModelToServer(buffer->cpu_data(), size_);//send the initial params to server
+    if (multiverso::MV_Rank() == 0) {
+        SubmitModelToServer(buffer->cpu_data(), size_);
     }
     multiverso::MV_Barrier();
 }
 
 template <typename Dtype>
 void ASGDSolver<Dtype>::SubmitModelToServer(const Dtype* model, int size) {
-    boost::shared_ptr<Dtype> current_model(new Dtype[size], [](Dtype *p) { delete[] p; });
+    boost::shared_ptr<Dtype> current_model(
+      new Dtype[size], [](Dtype *p) { delete[] p; });
     // clear model
     worker_table->Get(current_model.get(), size);
     multiverso::AddOption option;
     option.set_momentum(0);
     worker_table->Add(current_model.get(), size, &option);
-    for (int i = 0; i < size; i++)
-    {
+    for (int i = 0; i < size; i++) {
         current_model.get()[i] = 0.0f;
     }
     // clear momentum
     worker_table->Add(current_model.get(), size, &option);
 
     // replace with new model
-    for (auto i = 0; i < size; ++i)       current_model.get()[i] = -1 * model[i];
+    for (auto i = 0; i < size; ++i) {
+      current_model.get()[i] = -1 * model[i];
+    }
     worker_table->Add(current_model.get(), size, &option);
 
-    for (int i = 0; i < size; i++)
-    {
+    for (int i = 0; i < size; i++) {
         current_model.get()[i] = 0.0f;
     }
     // clear momentum
@@ -135,9 +138,12 @@ void ASGDSolver<Dtype>::SubmitModelToServer(const Dtype* model, int size) {
 }
 
 template <typename Dtype>
-void ASGDSolver<Dtype>::CopyModelToBuffer(boost::shared_ptr<Blob<Dtype>> buffer) {
+void ASGDSolver<Dtype>::CopyModelToBuffer(
+  boost::shared_ptr<Blob<Dtype>> buffer) {
     int count = 0;
-    for (int param_id = 0; param_id < this->net_->learnable_params().size(); ++param_id) {
+    for (int param_id = 0;
+      param_id < this->net_->learnable_params().size();
+      ++param_id) {
         auto weight = this->net_->learnable_params()[param_id];
         const Dtype* src = nullptr;
         Dtype* dst = nullptr;
@@ -159,9 +165,12 @@ void ASGDSolver<Dtype>::CopyModelToBuffer(boost::shared_ptr<Blob<Dtype>> buffer)
 }
 
 template <typename Dtype>
-void ASGDSolver<Dtype>::CopyDiffToBuffer(boost::shared_ptr<Blob<Dtype>> buffer) {
+void ASGDSolver<Dtype>::CopyDiffToBuffer(
+  boost::shared_ptr<Blob<Dtype>> buffer) {
     int count = 0;
-    for (int param_id = 0; param_id < this->net_->learnable_params().size(); ++param_id) {
+    for (int param_id = 0;
+      param_id < this->net_->learnable_params().size();
+      ++param_id) {
         auto weight = this->net_->learnable_params()[param_id];
         const Dtype* src = nullptr;
         Dtype* dst = nullptr;
@@ -183,9 +192,12 @@ void ASGDSolver<Dtype>::CopyDiffToBuffer(boost::shared_ptr<Blob<Dtype>> buffer) 
 }
 
 template <typename Dtype>
-void ASGDSolver<Dtype>::CopyBufferToModel(boost::shared_ptr<Blob<Dtype>> buffer) {
+void ASGDSolver<Dtype>::CopyBufferToModel(
+  boost::shared_ptr<Blob<Dtype>> buffer) {
     int count = 0;
-    for (int param_id = 0; param_id < this->net_->learnable_params().size(); ++param_id) {
+    for (int param_id = 0;
+      param_id < this->net_->learnable_params().size();
+      ++param_id) {
         auto weight = this->net_->learnable_params()[param_id];
         const Dtype* src = nullptr;
         Dtype* dst = nullptr;
@@ -215,17 +227,12 @@ void ASGDSolver<Dtype>::OnIterStart() {
   }
   DebugModel("Before CopyBufferToModel", *params_train);
   CopyBufferToModel(params_train);
-  
-  // DEBUG(junli): remove this
-  CopyModelToBuffer(params_train);
-  DebugModel("After CopyBufferToModel", *params_train);
-
   BroadCastData();
 }
 
 template <typename Dtype>
 void ASGDSolver<Dtype>::BroadCastData() {
-    // Note(junli): multiple gpu broadcast is automatically supported by caffe::P2PSync
+  // multiple gpu broadcast is automatically supported by caffe::P2PSync
 }
 
 template <typename Dtype>
@@ -236,16 +243,12 @@ void ASGDSolver<Dtype>::GetModelFromServer(Dtype* model, int size) {
 template <typename Dtype>
 void ASGDSolver<Dtype>::SubmitDiffToServer(Dtype* model, int size) {
     multiverso::AddOption option;
-    option.set_momentum(0.9f);                   // TODO(junli): Use parameter from proto file
+    // TODO(junli): Use parameter from proto file
+    option.set_momentum(0.9f);
     worker_table->Add(model, size, &option);
 }
 
 INSTANTIATE_CLASS(ASGDSolver);
 REGISTER_SOLVER_CLASS(ASGD);
-};
+};  // namespace caffe
 
-
-/*
-  TODO: clean code
-   test on multiple GPUs per node.
-*/

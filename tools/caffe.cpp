@@ -238,7 +238,7 @@ int asgd_train() {
     //==============================================================
     LOG(INFO) << "Initiaizing Multiverso";
     multiverso::SetCMDFlag("updater_type", string("sgd"));
-    multiverso::MV_Init(0, nullptr);//init parallel framework
+    multiverso::MV_Init(0, nullptr);  // init parallel framework
     auto mpi_rank = multiverso::MV_Rank();
     //==============================================================
     CHECK_GT(FLAGS_solver.size(), 0) << "Need a solver definition to train.";
@@ -259,8 +259,7 @@ int asgd_train() {
     if (gpus.size() == 0) {
         LOG(INFO) << "Use CPU.";
         Caffe::set_mode(Caffe::CPU);
-    }
-    else {
+    } else {
         ostringstream s;
         for (int i = 0; i < gpus.size(); ++i) {
             s << (i ? ", " : "") << gpus[i];
@@ -291,16 +290,14 @@ int asgd_train() {
     if (FLAGS_snapshot.size()) {
         LOG(INFO) << "Resuming from " << FLAGS_snapshot;
         solver->Restore(FLAGS_snapshot.c_str());
-    }
-    else if (FLAGS_weights.size()) {
+    } else if (FLAGS_weights.size()) {
         CopyLayers(solver.get(), FLAGS_weights);
     }
 
     if (gpus.size() > 1) {
         caffe::P2PSync<float> sync(solver, NULL, solver->param());
         sync.Run(gpus);
-    }
-    else {
+    } else {
         LOG(INFO) << "Starting Optimization";
         solver->Solve();
     }
