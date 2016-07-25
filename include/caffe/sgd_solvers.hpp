@@ -5,6 +5,11 @@
 #include <vector>
 
 #include "caffe/solver.hpp"
+#include <multiverso\multiverso.h>
+#include "boost/thread/barrier.hpp"
+#include <memory>
+#include <multiverso\util\async_buffer.h>
+#include <multiverso\table\array_table.h>
 
 namespace caffe {
 
@@ -141,6 +146,53 @@ class AdamSolver : public SGDSolver<Dtype> {
   virtual void ComputeUpdateValue(int param_id, Dtype rate);
 
   DISABLE_COPY_AND_ASSIGN(AdamSolver);
+};
+
+template <typename Dtype>
+class ASGDSolver : public SGDSolver<Dtype> {
+public:
+    explicit ASGDSolver(const SolverParameter& param)
+        : SGDSolver<Dtype>(param) { ASGDPreSolve(); }
+    explicit ASGDSolver(const string& param_file)
+        : SGDSolver<Dtype>(param_file) { ASGDPreSolve(); }
+    virtual inline const char* type() const { return "ASGD"; }
+    //virtual void Solve(const char* resume_file = NULL) override;
+    virtual void Snapshot() override;
+
+protected:
+    void ASGDPreSolve();
+    virtual void ApplyUpdate();
+    boost::shared_ptr<Blob<Dtype>> params_train, params_1, params_2;
+    boost::shared_ptr<multiverso::ArrayWorker<Dtype>> worker_table;
+    boost::shared_ptr<multiverso::ArrayServer<Dtype>> server_table;
+    boost::shared_ptr<multiverso::ASyncBuffer<boost::shared_ptr<Blob<Dtype>>>> async_buffer;
+    int GetParamSize();
+    void SubmitModelToServer(boost::shared_ptr<Blob<Dtype>> buffer);
+    void SubmitModelToServer(const Dtype* model, int size);
+    void CopyModelToBuffer(boost::shared_ptr<Blob<Dtype>> buffer);
+    void CopyBufferToModel(boost::shared_ptr<Blob<Dtype>> buffer);
+    void CopyDiffToBuffer(boost::shared_ptr<Blob<Dtype>> buffer);
+    void OnIterStart();
+    void GetModelFromServer(Dtype* model, int size);
+    void SubmitDiffToServer(Dtype* model, int size);
+    void BroadCastData();
+
+    class ASGDCallback : public Solver<Dtype>::Callback {
+      public:
+        ASGDCallback() { }
+        void SetSolver(ASGDSolver<Dtype>* asgdSolver) { asgdSolver_ = asgdSolver; }
+        virtual void on_start() override{ asgdSolver_->OnIterStart(); }
+        virtual void on_gradients_ready() override {    }
+      protected:
+        ASGDSolver<Dtype>* asgdSolver_;
+    };
+    template <typename T>
+    friend class ASGDSolver;
+    DISABLE_COPY_AND_ASSIGN(ASGDSolver);
+private:
+    void DebugModel(string str, const Blob<Dtype>& blob);
+    int size_;
+    bool use_pipeline_;
 };
 
 }  // namespace caffe

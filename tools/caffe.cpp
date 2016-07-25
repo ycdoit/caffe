@@ -12,8 +12,13 @@ namespace bp = boost::python;
 #include <vector>
 
 #include "boost/algorithm/string.hpp"
+#include "boost/interprocess/sync/named_mutex.hpp"
 #include "caffe/caffe.hpp"
 #include "caffe/util/signal_handler.h"
+#include "caffe/util/gpu_allocator.hpp"
+#include "multiverso/multiverso.h"
+#include "multiverso/util/configure.h"
+
 
 using caffe::Blob;
 using caffe::Caffe;
@@ -24,6 +29,7 @@ using caffe::shared_ptr;
 using caffe::string;
 using caffe::Timer;
 using caffe::vector;
+using caffe::GpuAllocator;
 using std::ostringstream;
 
 DEFINE_string(gpu, "",
@@ -47,6 +53,8 @@ DEFINE_string(sigint_effect, "stop",
 DEFINE_string(sighup_effect, "snapshot",
              "Optional; action to take when a SIGHUP signal is received: "
              "snapshot, stop or none.");
+DEFINE_int32(gpus_per_process, 1,
+    "The number of GPUs assigned to each process.");
 
 // A simple registry for caffe commands.
 typedef int (*BrewFunction)();
@@ -224,6 +232,80 @@ int train() {
 }
 RegisterBrewFunction(train);
 
+int asgd_train() {
+    //==============================================================
+    LOG(INFO) << "Initiaizing Multiverso";
+    multiverso::SetCMDFlag("updater_type", string("sgd"));
+    multiverso::MV_Init(0, nullptr);  // init parallel framework
+    auto mpi_rank = multiverso::MV_Rank();
+    //==============================================================
+    CHECK_GT(FLAGS_solver.size(), 0) << "Need a solver definition to train.";
+    CHECK(!FLAGS_snapshot.size() || !FLAGS_weights.size())
+        << "Give a snapshot to resume training or weights to finetune "
+        "but not both.";
+
+    caffe::SolverParameter solver_param;
+    caffe::ReadSolverParamsFromTextFileOrDie(FLAGS_solver, &solver_param);
+    solver_param.set_type("ASGD");
+
+    auto gpus_per_process = FLAGS_gpus_per_process;
+    GpuAllocator gpu_allocator;
+    vector<int> gpus;
+    CHECK(gpu_allocator.GetGpus(&gpus, gpus_per_process))
+      << "Failed to allocate" << gpus_per_process << " GPUs for process "
+      << multiverso::MV_Rank();
+    if (gpus.size() == 0) {
+        LOG(INFO) << "Use CPU.";
+        Caffe::set_mode(Caffe::CPU);
+    } else {
+        ostringstream s;
+        for (int i = 0; i < gpus.size(); ++i) {
+            s << (i ? ", " : "") << gpus[i];
+        }
+        LOG(INFO) << "Using GPUs " << s.str();
+#ifndef CPU_ONLY
+        cudaDeviceProp device_prop;
+        for (int i = 0; i < gpus.size(); ++i) {
+            cudaGetDeviceProperties(&device_prop, gpus[i]);
+            LOG(INFO) << "GPU " << gpus[i] << ": " << device_prop.name;
+        }
+#endif
+        solver_param.set_device_id(gpus[0]);
+        Caffe::SetDevice(gpus[0]);
+        Caffe::set_mode(Caffe::GPU);
+        Caffe::set_solver_count(gpus.size());
+    }
+
+    caffe::SignalHandler signal_handler(
+        GetRequestedAction(FLAGS_sigint_effect),
+        GetRequestedAction(FLAGS_sighup_effect));
+
+    shared_ptr<caffe::Solver<float> >
+        solver(caffe::SolverRegistry<float>::CreateSolver(solver_param));
+
+    solver->SetActionFunction(signal_handler.GetActionFunction());
+
+    if (FLAGS_snapshot.size()) {
+        LOG(INFO) << "Resuming from " << FLAGS_snapshot;
+        solver->Restore(FLAGS_snapshot.c_str());
+    } else if (FLAGS_weights.size()) {
+        CopyLayers(solver.get(), FLAGS_weights);
+    }
+
+    if (gpus.size() > 1) {
+        caffe::P2PSync<float> sync(solver, NULL, solver->param());
+        sync.Run(gpus);
+    } else {
+        LOG(INFO) << "Starting Optimization";
+        solver->Solve();
+    }
+    LOG(INFO) << "Optimization Done.";
+    //==============================================================
+    multiverso::MV_ShutDown();
+    //==============================================================/
+    return 0;
+}
+RegisterBrewFunction(asgd_train);
 
 // Test: score a model.
 int test() {
