@@ -243,3 +243,9 @@ void ASGDSolver<Dtype>::SubmitDiffToServer(Dtype* model, int size) {
 INSTANTIATE_CLASS(ASGDSolver);
 REGISTER_SOLVER_CLASS(ASGD);
 };
+
+
+/*
+  TODO: clean code
+   test on multiple GPUs per node.
+*/

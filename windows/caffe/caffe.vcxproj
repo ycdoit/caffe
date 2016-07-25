@@ -41,11 +41,11 @@
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
-    <IncludePath>D:\GIT\multiverso\include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Users\junli\multiverso-github\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
-      <AdditionalDependencies>D:\GIT\multiverso\x64\debug\Multiverso.lib;libcaffe.lib;$(CudaDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>D:\Users\junli\multiverso-github\x64\debug\Multiverso.lib;libcaffe.lib;$(CudaDependencies);%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
     <PostBuildEvent>
