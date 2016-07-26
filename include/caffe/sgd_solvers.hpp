@@ -5,11 +5,11 @@
 #include <vector>
 
 #include "caffe/solver.hpp"
-#include <multiverso\multiverso.h>
+#include <multiverso/multiverso.h>
 #include "boost/thread/barrier.hpp"
 #include <memory>
-#include <multiverso\util\async_buffer.h>
-#include <multiverso\table\array_table.h>
+#include <multiverso/util/async_buffer.h>
+#include <multiverso/table/array_table.h>
 
 namespace caffe {
 

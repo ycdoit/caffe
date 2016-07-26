@@ -26,8 +26,9 @@ void ASGDSolver<Dtype>::ASGDPreSolve() {
   this->add_callback(callback);
   auto param_size = GetParamSize();
   size_ = param_size;
-  params_1.reset(new Blob<Dtype>({ param_size, 1, 1, 1 }));
-  params_2.reset(new Blob<Dtype>({ param_size, 1, 1, 1 }));
+  vector<int> sizes = { param_size, 1, 1, 1 };
+  params_1.reset(new Blob<Dtype>(sizes));
+  params_2.reset(new Blob<Dtype>(sizes));
   worker_table.reset(new multiverso::ArrayWorker<Dtype>(param_size));
   server_table.reset(new multiverso::ArrayServer<Dtype>(param_size));
   multiverso::MV_Barrier();
@@ -68,16 +69,16 @@ int ASGDSolver<Dtype>::GetParamSize() {
 template <typename Dtype>
 void ASGDSolver<Dtype>::ApplyUpdate() {
     CHECK(Caffe::root_solver());
-    Dtype rate = GetLearningRate();
+    Dtype rate = this->GetLearningRate();
     if (this->param_.display() && this->iter_ % this->param_.display() == 0) {
         LOG(INFO) << "Iteration " << this->iter_ << ", lr = " << rate;
     }
-    ClipGradients();
+    this->ClipGradients();
     for (int param_id = 0; param_id < this->net_->learnable_params().size();
         ++param_id) {
-        Normalize(param_id);
-        Regularize(param_id);
-        ComputeUpdateValue(param_id, rate);
+        this->Normalize(param_id);
+        this->Regularize(param_id);
+        this->ComputeUpdateValue(param_id, rate);
     }
 
     // Copy diff to param_train, Submit diff to server
