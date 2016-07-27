@@ -95,7 +95,7 @@ layer {
 		num_output: 64
 		kernel_size: 1
 		pad: 0
-		stride: 2
+		stride: 1
 		bias_term: false
 	}
 }
@@ -400,7 +400,7 @@ layer {
 		num_output: 128 
 		kernel_size: 1
 		pad: 0
-		stride: 2
+		stride: 1
 		bias_term: false
 	}
 }
@@ -794,7 +794,7 @@ layer {
 		num_output: 256
 		kernel_size: 1
 		pad: 0
-		stride: 2
+		stride: 1
 		bias_term: false
 	}
 }
@@ -828,7 +828,7 @@ layer {
 		num_output: 256
 		kernel_size: 3
 		pad: 1
-		stride: 2
+		stride: 1
 		bias_term: false
 	}
 }
@@ -1368,7 +1368,7 @@ layer {
 		num_output: 512
 		kernel_size: 1
 		pad: 0
-		stride: 2
+		stride: 1
 		bias_term: false
 	}
 }
