@@ -1,4 +1,4 @@
-name: "CIFAR10_Resnet-34"
+name: "CIFAR10_Resnet-32"
 layer {
   name: "cifar"
   type: "Data"

@@ -1,13 +1,10 @@
-# reduce learning rate after 120 epochs (60000 iters) by factor 0f 10
-# then another factor of 10 after 10 more epochs (5000 iters)
-
 # The train/test net protocol buffer definition
-net: "examples/cifar10/cifar10_resnet_34_train_test.prototxt"
+net: "examples/cifar10/cifar10_resnet_32_train_test.prototxt"
 # test_iter specifies how many forward passes the test should carry out.
-# In the case of CIFAR10, we have test batch size 100 and 100 test iterations,
+# In the case of CIFAR10, we have test batch size 100 and 200 test iterations,
 # covering the full 10,000 testing images.
 test_iter: 100
-# Carry out testing every 1000 training iterations.
+# Carry out testing every 200 training iterations.
 test_interval: 200
 # The base learning rate, momentum and the weight decay of the network.
 base_lr: 0.001
@@ -22,6 +19,6 @@ max_iter: 64000
 # snapshot intermediate results
 snapshot: 4000
 snapshot_format: HDF5
-snapshot_prefix: "examples/cifar10/cifar10_resnet_34"
+snapshot_prefix: "examples/cifar10/cifar10_resnet_32"
 # solver mode: CPU or GPU
 solver_mode: GPU
