@@ -235,7 +235,7 @@ RegisterBrewFunction(train);
 int asgd_train() {
     //==============================================================
     LOG(INFO) << "Initiaizing Multiverso";
-    multiverso::SetCMDFlag("updater_type", string("sgd"));
+    multiverso::SetCMDFlag("updater_type", string("momentum_sgd"));
     multiverso::MV_Init(0, nullptr);  // init parallel framework
     auto mpi_rank = multiverso::MV_Rank();
     //==============================================================
