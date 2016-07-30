@@ -35,9 +35,7 @@ void ASGDSolver<Dtype>::ASGDPreSolve() {
 
   params_train = params_1;
   // init the pipeline buffer
-  DebugModel("Before CopyModelToBuffer", *params_train);
   CopyModelToBuffer(params_train);
-  DebugModel("After CopyModelToBuffer", *params_train);
   SubmitModelToServer(params_train);
 
   const auto worker = this->worker_table;
@@ -82,9 +80,7 @@ void ASGDSolver<Dtype>::ApplyUpdate() {
     }
 
     // Copy diff to param_train, Submit diff to server
-    DebugModel("Before CopyDiffToBuffer", *params_train);
     CopyDiffToBuffer(params_train);
-    DebugModel("After CopyDiffToBuffer", *params_train);
     SubmitDiffToServer(params_train->mutable_cpu_diff(), size_);
     // SubmitModelToServer(params_train);
 }
@@ -226,7 +222,6 @@ void ASGDSolver<Dtype>::OnIterStart() {
   } else {
     worker_table->Get(params_train->mutable_cpu_data(), size_);
   }
-  DebugModel("Before CopyBufferToModel", *params_train);
   CopyBufferToModel(params_train);
   BroadCastData();
 }
