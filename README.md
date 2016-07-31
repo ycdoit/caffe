@@ -7,10 +7,10 @@
 
 ## Installation
 
-- Step 1: Follow [this](https://github.com/Microsoft/multiverso) to install Multiverso.
-- Step 2: Clone https://github.com/ycdoit/caffe.git to your machine and follow [this](http://caffe.berkeleyvision.org/installation.html) to install.
+- Step 1: Follow this [introduction](https://github.com/Microsoft/multiverso) to install Multiverso.
+- Step 2: Clone https://github.com/ycdoit/caffe.git and follow this [introduction](http://caffe.berkeleyvision.org/installation.html) to install Caffe.
 
-Documentation
+## Documentation
 - [Benchmark](https://github.com/Microsoft/multiverso/wiki/Multiverso-Caffe-Benchmark)
 
 Microsoft Open Source Code of Conduct
