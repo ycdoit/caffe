@@ -161,7 +161,8 @@ public:
 
 protected:
     void ASGDPreSolve();
-    virtual void ApplyUpdate();
+    virtual void ApplyUpdate() override;
+    virtual void ComputeUpdateValue(int param_id, Dtype rate) override;
     boost::shared_ptr<Blob<Dtype>> params_train, params_1, params_2;
     boost::shared_ptr<multiverso::ArrayWorker<Dtype>> worker_table;
     boost::shared_ptr<multiverso::ArrayServer<Dtype>> server_table;

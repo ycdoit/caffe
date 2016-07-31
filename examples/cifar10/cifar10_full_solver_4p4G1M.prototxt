@@ -8,7 +8,7 @@ net: "examples/cifar10/cifar10_full_train_test.prototxt"
 # covering the full 10,000 testing images.
 test_iter: 100
 # Carry out testing every 1000 training iterations.
-test_interval: 1000
+test_interval: 200
 # The base learning rate, momentum and the weight decay of the network.
 base_lr: 0.01
 momentum: 0.9
