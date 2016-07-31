@@ -233,9 +233,9 @@ void ASGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
   case Caffe::CPU: {
     caffe_cpu_axpby(net_params[param_id]->count(), local_rate,
       net_params[param_id]->cpu_diff(), momentum,
-      history_[param_id]->mutable_cpu_data());
+      this->history_[param_id]->mutable_cpu_data());
     caffe_copy(net_params[param_id]->count(),
-      history_[param_id]->cpu_data(),
+      this->history_[param_id]->cpu_data(),
       net_params[param_id]->mutable_cpu_diff());
     break;
   }
@@ -243,7 +243,7 @@ void ASGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
 #ifndef CPU_ONLY
     sgd_update_gpu(net_params[param_id]->count(),
       net_params[param_id]->mutable_gpu_diff(),
-      history_[param_id]->mutable_gpu_data(),
+      this->history_[param_id]->mutable_gpu_data(),
       momentum, local_rate);
 #else
     NO_GPU;
