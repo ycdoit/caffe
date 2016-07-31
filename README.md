@@ -7,8 +7,8 @@
 
 ## Installation
 
-- Step 1: Follow this [introduction](https://github.com/Microsoft/multiverso) to install Multiverso.
-- Step 2: Clone https://github.com/ycdoit/caffe.git and follow this [introduction](http://caffe.berkeleyvision.org/installation.html) to install Caffe.
+- Step 1: Follow [this guide](https://github.com/Microsoft/multiverso) to install Multiverso.
+- Step 2: Clone https://github.com/ycdoit/caffe.git and follow [this guide](http://caffe.berkeleyvision.org/installation.html) to install Caffe.
 
 ## Documentation
 - [Benchmark](https://github.com/Microsoft/multiverso/wiki/Multiverso-Caffe-Benchmark)
