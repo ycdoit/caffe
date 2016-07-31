@@ -215,6 +215,46 @@ void ASGDSolver<Dtype>::CopyBufferToModel(
     }
 }
 
+#ifndef CPU_ONLY
+template <typename Dtype>
+void sgd_update_gpu(int N, Dtype* g, Dtype* h, Dtype momentum,
+  Dtype local_rate);
+#endif
+
+template <typename Dtype>
+void ASGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
+  const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
+  const vector<float>& net_params_lr = this->net_->params_lr();
+  // set local momentum = 0
+  Dtype momentum = 0;
+  Dtype local_rate = rate * net_params_lr[param_id];
+  // Compute the update to history, then copy it to the parameter diff.
+  switch (Caffe::mode()) {
+  case Caffe::CPU: {
+    caffe_cpu_axpby(net_params[param_id]->count(), local_rate,
+      net_params[param_id]->cpu_diff(), momentum,
+      history_[param_id]->mutable_cpu_data());
+    caffe_copy(net_params[param_id]->count(),
+      history_[param_id]->cpu_data(),
+      net_params[param_id]->mutable_cpu_diff());
+    break;
+  }
+  case Caffe::GPU: {
+#ifndef CPU_ONLY
+    sgd_update_gpu(net_params[param_id]->count(),
+      net_params[param_id]->mutable_gpu_diff(),
+      history_[param_id]->mutable_gpu_data(),
+      momentum, local_rate);
+#else
+    NO_GPU;
+#endif
+    break;
+  }
+  default:
+    LOG(FATAL) << "Unknown caffe mode: " << Caffe::mode();
+  }
+}
+
 template <typename Dtype>
 void ASGDSolver<Dtype>::OnIterStart() {
   if (use_pipeline_) {
@@ -240,7 +280,7 @@ template <typename Dtype>
 void ASGDSolver<Dtype>::SubmitDiffToServer(Dtype* model, int size) {
     multiverso::AddOption option;
     // TODO(junli): Use parameter from proto file
-    option.set_momentum(0.9f);
+    option.set_momentum(this->param_.momentum());
     worker_table->Add(model, size, &option);
 }
 
